@@ -202,3 +202,28 @@
         (ok rewards)
     )
 )
+
+
+(define-map supported-tokens
+    principal  ;; token contract
+    bool
+)
+
+(define-public (add-supported-token (token-contract principal))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set supported-tokens token-contract true)
+        (ok true)
+    )
+)
+
+(define-public (enter-lottery-with-token 
+    (tier uint) 
+    (amount uint)
+    (token-contract principal))
+    (begin
+        (asserts! (default-to false (map-get? supported-tokens token-contract)) (err u300))
+        ;; Add token transfer logic here
+        (ok true)
+    )
+)
