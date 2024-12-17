@@ -227,3 +227,23 @@
         (ok true)
     )
 )
+
+
+(define-map compound-preferences
+    {tier: uint, user: principal}
+    bool
+)
+
+(define-public (set-auto-compound (tier uint) (enabled bool))
+    (begin
+        (map-set compound-preferences
+            {tier: tier, user: tx-sender}
+            enabled)
+        (ok true)
+    )
+)
+
+(define-read-only (get-compound-setting (tier uint) (user principal))
+    (default-to false 
+        (map-get? compound-preferences {tier: tier, user: user}))
+)
