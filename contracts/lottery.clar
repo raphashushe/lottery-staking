@@ -247,3 +247,32 @@
     (default-to false 
         (map-get? compound-preferences {tier: tier, user: user}))
 )
+
+
+(define-data-var treasury-balance uint u0)
+(define-constant treasury-fee u100) ;; 1% fee
+
+(define-public (collect-treasury-fees (amount uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (let (
+            (fee-amount (/ (* amount treasury-fee) u10000))
+        )
+            (var-set treasury-balance (+ (var-get treasury-balance) fee-amount))
+            (ok fee-amount)
+        )
+    )
+)
+
+(define-public (withdraw-treasury)
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (let (
+            (amount (var-get treasury-balance))
+        )
+            (var-set treasury-balance u0)
+            (try! (as-contract (stx-transfer? amount tx-sender contract-owner)))
+            (ok amount)
+        )
+    )
+)
