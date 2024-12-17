@@ -172,3 +172,33 @@
         )
     )
 )
+
+
+(define-map referrals
+    principal  ;; referred user
+    principal  ;; referrer
+)
+
+(define-map referral-rewards
+    principal
+    uint
+)
+
+(define-public (refer-user (new-user principal))
+    (begin
+        (asserts! (is-none (map-get? referrals new-user)) (err u200))
+        (map-set referrals new-user tx-sender)
+        (ok true)
+    )
+)
+
+(define-public (claim-referral-rewards)
+    (let (
+        (rewards (default-to u0 (map-get? referral-rewards tx-sender)))
+    )
+        (asserts! (> rewards u0) (err u201))
+        (try! (as-contract (stx-transfer? rewards tx-sender tx-sender)))
+        (map-set referral-rewards tx-sender u0)
+        (ok rewards)
+    )
+)
