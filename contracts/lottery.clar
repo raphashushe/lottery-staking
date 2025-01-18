@@ -276,3 +276,40 @@
         )
     )
 )
+
+
+
+;; Add to data structures
+(define-map lottery-rounds 
+    {tier: uint, round: uint}
+    {
+        start-block: uint,
+        end-block: uint,
+        total-staked: uint,
+        winner: (optional principal)
+    }
+)
+
+;; Add after other define-data-var declarations
+(define-data-var current-roundd uint u0)
+
+
+;; Add public function
+(define-public (start-new-round (tier uint))
+    (let (
+        (current-round (var-get current-roundd))
+        (next-round (+ current-round u1))
+    )
+        (map-set lottery-rounds 
+            {tier: tier, round: next-round}
+            {
+                start-block: block-height,
+                end-block: (+ block-height u100),
+                total-staked: u0,
+                winner: none
+            }
+        )
+        (var-set current-roundd next-round)
+        (ok next-round)
+    )
+)
