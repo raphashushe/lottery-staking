@@ -172,3 +172,107 @@
         )
     )
 )
+
+
+(define-map referrals
+    principal  ;; referred user
+    principal  ;; referrer
+)
+
+(define-map referral-rewards
+    principal
+    uint
+)
+
+(define-public (refer-user (new-user principal))
+    (begin
+        (asserts! (is-none (map-get? referrals new-user)) (err u200))
+        (map-set referrals new-user tx-sender)
+        (ok true)
+    )
+)
+
+(define-public (claim-referral-rewards)
+    (let (
+        (rewards (default-to u0 (map-get? referral-rewards tx-sender)))
+    )
+        (asserts! (> rewards u0) (err u201))
+        (try! (as-contract (stx-transfer? rewards tx-sender tx-sender)))
+        (map-set referral-rewards tx-sender u0)
+        (ok rewards)
+    )
+)
+
+
+(define-map supported-tokens
+    principal  ;; token contract
+    bool
+)
+
+(define-public (add-supported-token (token-contract principal))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set supported-tokens token-contract true)
+        (ok true)
+    )
+)
+
+(define-public (enter-lottery-with-token 
+    (tier uint) 
+    (amount uint)
+    (token-contract principal))
+    (begin
+        (asserts! (default-to false (map-get? supported-tokens token-contract)) (err u300))
+        ;; Add token transfer logic here
+        (ok true)
+    )
+)
+
+
+(define-map compound-preferences
+    {tier: uint, user: principal}
+    bool
+)
+
+(define-public (set-auto-compound (tier uint) (enabled bool))
+    (begin
+        (map-set compound-preferences
+            {tier: tier, user: tx-sender}
+            enabled)
+        (ok true)
+    )
+)
+
+(define-read-only (get-compound-setting (tier uint) (user principal))
+    (default-to false 
+        (map-get? compound-preferences {tier: tier, user: user}))
+)
+
+
+(define-data-var treasury-balance uint u0)
+(define-constant treasury-fee u100) ;; 1% fee
+
+(define-public (collect-treasury-fees (amount uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (let (
+            (fee-amount (/ (* amount treasury-fee) u10000))
+        )
+            (var-set treasury-balance (+ (var-get treasury-balance) fee-amount))
+            (ok fee-amount)
+        )
+    )
+)
+
+(define-public (withdraw-treasury)
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (let (
+            (amount (var-get treasury-balance))
+        )
+            (var-set treasury-balance u0)
+            (try! (as-contract (stx-transfer? amount tx-sender contract-owner)))
+            (ok amount)
+        )
+    )
+)

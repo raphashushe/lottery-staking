@@ -4,12 +4,22 @@ import { describe, it, expect, beforeEach } from 'vitest';
 let pools: Record<number, any>;
 let stakes: Record<string, number>;
 let participants: Record<number, string[]>;
+let referrals: Record<string, string>;
+let referralRewards: Record<string, number>;
+let supportedTokens: Record<string, boolean>;
+let compoundPreferences: Record<string, boolean>;
+let treasuryBalance: number;
 
 beforeEach(() => {
   // Reset the state before each test.
   pools = {};
   stakes = {};
   participants = {};
+  referrals = {};
+  referralRewards = {};
+  supportedTokens = {};
+  compoundPreferences = {};
+  treasuryBalance = 0;
 });
 
 // Helper function to simulate contract methods
@@ -85,6 +95,30 @@ function endLottery(tier: number, currentBlockHeight: number) {
   };
 }
 
+function referUser(newUser: string, referrer: string) {
+  if (referrals[newUser]) return { ok: false, error: 200 };
+  referrals[newUser] = referrer;
+  return { ok: true };
+}
+
+function addSupportedToken(tokenContract: string, sender: string) {
+  if (sender !== 'owner') return { ok: false, error: 100 };
+  supportedTokens[tokenContract] = true;
+  return { ok: true };
+}
+
+function setAutoCompound(tier: number, user: string, enabled: boolean) {
+  compoundPreferences[`${tier}:${user}`] = enabled;
+  return { ok: true };
+}
+
+function collectTreasuryFees(amount: number, sender: string) {
+  if (sender !== 'owner') return { ok: false, error: 100 };
+  const fee = Math.floor((amount * 100) / 10000); // 1% fee
+  treasuryBalance += fee;
+  return { ok: { feeAmount: fee } };
+}
+
 
 // Tests
 describe('Lottery Contract Tests', () => {
@@ -152,3 +186,61 @@ function fail(arg0: string) {
   throw new Error('Function not implemented.');
 }
 
+
+describe('Referral System Tests', () => {
+  it('should successfully refer a new user', () => {
+    const result = referUser('new_user', 'referrer');
+    expect(result.ok).toBe(true);
+    expect(referrals['new_user']).toBe('referrer');
+  });
+
+  it('should prevent referring an existing user', () => {
+    referUser('new_user', 'referrer');
+    const result = referUser('new_user', 'another_referrer');
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe(200);
+  });
+});
+
+describe('Token Registry Tests', () => {
+  it('should add supported token by owner', () => {
+    const result = addSupportedToken('token_contract', 'owner');
+    expect(result.ok).toBe(true);
+    expect(supportedTokens['token_contract']).toBe(true);
+  });
+
+  it('should reject token addition by non-owner', () => {
+    const result = addSupportedToken('token_contract', 'user');
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe(100);
+  });
+});
+
+describe('Auto-Compound Tests', () => {
+  it('should set auto-compound preference', () => {
+    const result = setAutoCompound(0, 'user1', true);
+    expect(result.ok).toBe(true);
+    expect(compoundPreferences['0:user1']).toBe(true);
+  });
+
+  it('should update existing auto-compound preference', () => {
+    setAutoCompound(0, 'user1', true);
+    const result = setAutoCompound(0, 'user1', false);
+    expect(result.ok).toBe(true);
+    expect(compoundPreferences['0:user1']).toBe(false);
+  });
+});
+
+describe('Treasury Tests', () => {
+  it('should collect fees correctly', () => {
+    const result = collectTreasuryFees(10000, 'owner');
+    expect(result.ok).toMatchObject({ feeAmount: 100 });
+    expect(treasuryBalance).toBe(100);
+  });
+
+  it('should reject fee collection by non-owner', () => {
+    const result = collectTreasuryFees(10000, 'user');
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe(100);
+  });
+});
