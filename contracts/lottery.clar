@@ -363,3 +363,26 @@
         (ok true)
     )
 )
+
+
+(define-map user-achievements
+    principal
+    {
+        total-entries: uint,
+        total-wins: uint,
+        achievement-points: uint
+    }
+)
+
+(define-public (update-achievements (user principal))
+    (let (
+        (current-stats (default-to {total-entries: u0, total-wins: u0, achievement-points: u0}
+            (map-get? user-achievements user)))
+    )
+        (map-set user-achievements user
+            (merge current-stats {
+                total-entries: (+ (get total-entries current-stats) u1)
+            }))
+        (ok true)
+    )
+)
