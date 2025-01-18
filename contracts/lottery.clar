@@ -276,3 +276,152 @@
         )
     )
 )
+
+
+
+;; Add to data structures
+(define-map lottery-rounds 
+    {tier: uint, round: uint}
+    {
+        start-block: uint,
+        end-block: uint,
+        total-staked: uint,
+        winner: (optional principal)
+    }
+)
+
+;; Add after other define-data-var declarations
+(define-data-var current-roundd uint u0)
+
+
+;; Add public function
+(define-public (start-new-round (tier uint))
+    (let (
+        (current-round (var-get current-roundd))
+        (next-round (+ current-round u1))
+    )
+        (map-set lottery-rounds 
+            {tier: tier, round: next-round}
+            {
+                start-block: block-height,
+                end-block: (+ block-height u100),
+                total-staked: u0,
+                winner: none
+            }
+        )
+        (var-set current-roundd next-round)
+        (ok next-round)
+    )
+)
+
+
+
+
+;; Add at the top with other data structures
+(define-map token-registry
+    principal  ;; token contract
+    {
+        enabled: bool,
+        min-stake: uint,
+        decimals: uint
+    }
+)
+
+(define-public (register-token 
+    (token-contract principal) 
+    (min-stake uint)
+    (decimals uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set token-registry token-contract {
+            enabled: true,
+            min-stake: min-stake,
+            decimals: decimals
+        })
+        (ok true)
+    )
+)
+
+
+;; Add with other data structures
+(define-map staking-multipliers
+    {user: principal, tier: uint}
+    {start-block: uint, multiplier: uint}
+)
+
+(define-public (calculate-multiplier (tier uint))
+    (let (
+        (user-data (default-to {start-block: block-height, multiplier: u100}
+            (map-get? staking-multipliers {user: tx-sender, tier: tier})))
+        (blocks-staked (- block-height (get start-block user-data)))
+    )
+        (if (> blocks-staked u1000)
+            (map-set staking-multipliers 
+                {user: tx-sender, tier: tier}
+                {start-block: (get start-block user-data), multiplier: u150})
+            true)
+        (ok true)
+    )
+)
+
+
+(define-map user-achievements
+    principal
+    {
+        total-entries: uint,
+        total-wins: uint,
+        achievement-points: uint
+    }
+)
+
+(define-public (update-achievements (user principal))
+    (let (
+        (current-stats (default-to {total-entries: u0, total-wins: u0, achievement-points: u0}
+            (map-get? user-achievements user)))
+    )
+        (map-set user-achievements user
+            (merge current-stats {
+                total-entries: (+ (get total-entries current-stats) u1)
+            }))
+        (ok true)
+    )
+)
+
+
+(define-data-var pool-scaling-factor uint u100)
+
+(define-public (adjust-pool-size (tier uint))
+    (let (
+        (pool (unwrap! (map-get? pools tier) err-not-active))
+        (participants-count (len (default-to (list) (map-get? pool-participants tier))))
+    )
+        (if (> participants-count u40)
+            (var-set pool-scaling-factor u150)
+            (var-set pool-scaling-factor u100))
+        (ok (var-get pool-scaling-factor))
+    )
+)
+
+
+
+(define-map bonus-rounds
+    uint  ;; round number
+    {
+        active: bool,
+        multiplier: uint,
+        end-block: uint
+    }
+)
+
+(define-public (start-bonus-round (duration uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set bonus-rounds (var-get current-roundd)
+            {
+                active: true,
+                multiplier: u200,  ;; 2x rewards
+                end-block: (+ block-height duration)
+            })
+        (ok true)
+    )
+)
