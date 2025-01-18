@@ -313,3 +313,53 @@
         (ok next-round)
     )
 )
+
+
+
+
+;; Add at the top with other data structures
+(define-map token-registry
+    principal  ;; token contract
+    {
+        enabled: bool,
+        min-stake: uint,
+        decimals: uint
+    }
+)
+
+(define-public (register-token 
+    (token-contract principal) 
+    (min-stake uint)
+    (decimals uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set token-registry token-contract {
+            enabled: true,
+            min-stake: min-stake,
+            decimals: decimals
+        })
+        (ok true)
+    )
+)
+
+
+;; Add with other data structures
+(define-map staking-multipliers
+    {user: principal, tier: uint}
+    {start-block: uint, multiplier: uint}
+)
+
+(define-public (calculate-multiplier (tier uint))
+    (let (
+        (user-data (default-to {start-block: block-height, multiplier: u100}
+            (map-get? staking-multipliers {user: tx-sender, tier: tier})))
+        (blocks-staked (- block-height (get start-block user-data)))
+    )
+        (if (> blocks-staked u1000)
+            (map-set staking-multipliers 
+                {user: tx-sender, tier: tier}
+                {start-block: (get start-block user-data), multiplier: u150})
+            true)
+        (ok true)
+    )
+)
