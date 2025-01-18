@@ -401,3 +401,27 @@
         (ok (var-get pool-scaling-factor))
     )
 )
+
+
+
+(define-map bonus-rounds
+    uint  ;; round number
+    {
+        active: bool,
+        multiplier: uint,
+        end-block: uint
+    }
+)
+
+(define-public (start-bonus-round (duration uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set bonus-rounds (var-get current-roundd)
+            {
+                active: true,
+                multiplier: u200,  ;; 2x rewards
+                end-block: (+ block-height duration)
+            })
+        (ok true)
+    )
+)
