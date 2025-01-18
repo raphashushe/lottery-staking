@@ -386,3 +386,18 @@
         (ok true)
     )
 )
+
+
+(define-data-var pool-scaling-factor uint u100)
+
+(define-public (adjust-pool-size (tier uint))
+    (let (
+        (pool (unwrap! (map-get? pools tier) err-not-active))
+        (participants-count (len (default-to (list) (map-get? pool-participants tier))))
+    )
+        (if (> participants-count u40)
+            (var-set pool-scaling-factor u150)
+            (var-set pool-scaling-factor u100))
+        (ok (var-get pool-scaling-factor))
+    )
+)
