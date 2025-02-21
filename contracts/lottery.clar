@@ -425,3 +425,215 @@
         (ok true)
     )
 )
+
+
+
+
+
+
+;; contract updates
+
+
+(define-public (update-lottery-pool 
+        (tier uint)
+        (min-stake uint)
+        (duration uint)
+        (winner-share uint)
+        (staking-share uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (let ((pool (unwrap! (map-get? pools tier) err-not-active)))
+            (asserts! (get is-active pool) err-not-active)
+            
+            (map-set pools tier {
+                min-stake: min-stake,
+                total-staked: u0,
+                winner-share: winner-share,
+                staking-share: staking-share,
+                end-block: (+ block-height duration),
+                is-active: true,
+                winner: none
+            })
+            (ok true)
+        )
+    )
+)
+
+
+;; Add to data structures
+(define-map loyalty-points 
+    principal 
+    {points: uint, level: uint}
+)
+
+(define-public (award-loyalty-points (user principal) (points uint))
+    (let (
+        (current-points (default-to {points: u0, level: u0} 
+            (map-get? loyalty-points user)))
+    )
+        (map-set loyalty-points user
+            (merge current-points {
+                points: (+ (get points current-points) points),
+                level: (/ (+ (get points current-points) points) u1000)
+            }))
+        (ok true)
+    )
+)
+
+
+
+;; Add to data structures
+(define-map special-events
+    uint  ;; event ID
+    {
+        name: (string-ascii 50),
+        multiplier: uint,
+        start-block: uint,
+        end-block: uint
+    }
+)
+
+(define-public (create-special-event 
+    (name (string-ascii 50)) 
+    (multiplier uint) 
+    (duration uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set special-events (+ block-height u1) {
+            name: name,
+            multiplier: multiplier,
+            start-block: block-height,
+            end-block: (+ block-height duration)
+        })
+        (ok true)
+    )
+)
+
+
+
+;; Add to data structures
+(define-map user-streaks
+    principal
+    {current-streak: uint, max-streak: uint}
+)
+
+(define-public (update-streak (user principal))
+    (let (
+        (streak-data (default-to {current-streak: u0, max-streak: u0} 
+            (map-get? user-streaks user)))
+        (new-streak (+ (get current-streak streak-data) u1))
+    )
+        (map-set user-streaks user {
+            current-streak: new-streak,
+            max-streak: (if (> new-streak (get max-streak streak-data))
+                new-streak
+                (get max-streak streak-data))
+        })
+        (ok true)
+    )
+)
+
+
+
+;; Add to data structures
+(define-map teams
+    (string-ascii 50)  ;; team name
+    {
+        leader: principal,
+        members: (list 50 principal),
+        total-staked: uint
+    }
+)
+
+(define-public (create-team (team-name (string-ascii 50)))
+    (begin
+        (asserts! (is-none (map-get? teams team-name)) (err u400))
+        (map-set teams team-name {
+            leader: tx-sender,
+            members: (list tx-sender),
+            total-staked: u0
+        })
+        (ok true)
+    )
+)
+
+
+
+;; Add to data structures
+(define-map daily-challenges
+    uint  ;; challenge ID
+    {
+        description: (string-ascii 100),
+        reward: uint,
+        participants: (list 100 principal)
+    }
+)
+
+(define-public (create-daily-challenge 
+    (description (string-ascii 100)) 
+    (reward uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set daily-challenges block-height {
+            description: description,
+            reward: reward,
+            participants: (list)
+        })
+        (ok true)
+    )
+)
+
+
+
+;; Add to data structures
+(define-map vip-nft-holders
+    principal
+    {level: uint, benefits: uint}
+)
+
+(define-public (register-vip-nft (holder principal) (nft-id uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set vip-nft-holders holder {
+            level: u1,
+            benefits: u150  ;; 1.5x multiplier
+        })
+        (ok true)
+    )
+)
+
+
+
+;; Add to data structures
+(define-data-var jackpot-pool uint u0)
+(define-constant jackpot-contribution-rate u100) ;; 1%
+
+(define-public (add-to-jackpot (amount uint))
+    (begin
+        (var-set jackpot-pool (+ (var-get jackpot-pool) 
+            (/ (* amount jackpot-contribution-rate) u10000)))
+        (ok (var-get jackpot-pool))
+    )
+)
+
+
+
+;; Add to data structures
+(define-map referral-tiers
+    principal
+    {tier: uint, total-referrals: uint}
+)
+
+(define-public (upgrade-referral-tier (referrer principal))
+    (let (
+        (current-data (default-to {tier: u0, total-referrals: u0} 
+            (map-get? referral-tiers referrer)))
+        (new-referrals (+ (get total-referrals current-data) u1))
+    )
+        (map-set referral-tiers referrer {
+            tier: (/ new-referrals u5),  ;; Tier up every 5 referrals
+            total-referrals: new-referrals
+        })
+        (ok true)
+    )
+)
