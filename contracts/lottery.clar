@@ -637,3 +637,143 @@
         (ok true)
     )
 )
+;; Add to data structures
+(define-map staking-duration
+    {user: principal, pool-id: uint}
+    {start-time: uint, multiplier: uint}
+)
+
+(define-public (calculate-time-bonus (pool-id uint))
+    (let (
+        (user-data (default-to {start-time: block-height, multiplier: u100}
+            (map-get? staking-duration {user: tx-sender, pool-id: pool-id})))
+        (time-staked (- block-height (get start-time user-data)))
+    )
+        (if (> time-staked u1000)
+            (ok u150) ;; 1.5x multiplier after 1000 blocks
+            (ok u100))
+    )
+)
+(define-data-var progressive-jackpot uint u0)
+(define-constant jackpot-rate u50) ;; 0.5% contribution
+
+(define-public (add-to-progressive-jackpot (amount uint))
+    (begin
+        (var-set progressive-jackpot 
+            (+ (var-get progressive-jackpot) 
+               (/ (* amount jackpot-rate) u10000)))
+        (ok (var-get progressive-jackpot))
+    )
+)
+(define-map seasonal-events
+    uint  ;; season id
+    {
+        name: (string-ascii 50),
+        bonus: uint,
+        start-block: uint,
+        end-block: uint
+    }
+)
+
+(define-public (create-season (name (string-ascii 50)) (duration uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set seasonal-events block-height
+            {
+                name: name,
+                bonus: u200, ;; 2x rewards
+                start-block: block-height,
+                end-block: (+ block-height duration)
+            })
+        (ok true)
+    )
+)
+(define-map user-milestones
+    principal
+    {
+        games-played: uint,
+        total-won: uint,
+        rank: (string-ascii 20)
+    }
+)
+
+(define-public (update-milestones)
+    (let (
+        (current (default-to {games-played: u0, total-won: u0, rank: "Beginner"}
+            (map-get? user-milestones tx-sender)))
+    )
+        (map-set user-milestones tx-sender
+            (merge current {games-played: (+ (get games-played current) u1)}))
+        (ok true)
+    )
+)
+(define-map leagues
+    (string-ascii 20)  ;; league name
+    {
+        min-stake: uint,
+        rewards-multiplier: uint,
+        members: (list 100 principal)
+    }
+)
+
+(define-public (join-league (league-name (string-ascii 20)))
+    (let (
+        (league (unwrap! (map-get? leagues league-name) (err u500)))
+    )
+        (asserts! (>= (get-stake TIER-SMALL tx-sender) (get min-stake league)) (err u501))
+        (ok true)
+    )
+)
+(define-map referral-system
+    principal  ;; referrer
+    {
+        referred: (list 50 principal),
+        rewards: uint
+    }
+)
+
+(define-public (refer-friend (friend principal))
+    (let (
+        (current-refs (default-to {referred: (list), rewards: u0}
+            (map-get? referral-system tx-sender)))
+    )
+        (map-set referral-system tx-sender
+            (merge current-refs {
+                referred: (unwrap! (as-max-len? 
+                    (append (get referred current-refs) friend) u50) (err u502))
+            }))
+        (ok true)
+    )
+)
+(define-map lucky-numbers
+    {user: principal, number: uint}
+    bool
+)
+
+(define-public (set-lucky-number (number uint))
+    (begin
+        (map-set lucky-numbers
+            {user: tx-sender, number: number}
+            true)
+        (ok true)
+    )
+)
+(define-map vip-status
+    principal
+    {
+        level: uint,
+        bonus-multiplier: uint,
+        special-entries: uint
+    }
+)
+
+(define-public (upgrade-vip-status)
+    (let (
+        (current-status (default-to {level: u1, bonus-multiplier: u110, special-entries: u0}
+            (map-get? vip-status tx-sender)))
+    )
+        (map-set vip-status tx-sender
+            (merge current-status {level: (+ (get level current-status) u1)}))
+        (ok true)
+    )
+)
