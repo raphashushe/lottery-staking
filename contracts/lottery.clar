@@ -1164,6 +1164,7 @@
         (pool (unwrap! (map-get? token-pools {pool-id: pool-id, token: token}) (err u2000)))
     )
         (asserts! (get enabled pool) (err u2001))
+        ;; TODO: Add token transfer logic
         ;; (try! (contract-call? token transfer amount tx-sender (as-contract tx-sender)))
         (map-set token-pools 
             {pool-id: pool-id, token: token}
