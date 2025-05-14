@@ -1094,3 +1094,84 @@
 
 
 
+(define-map tier-scaling
+    uint
+    {
+        base-prize: uint,
+        participant-threshold: uint,
+        scaling-factor: uint,
+        last-updated: uint
+    }
+)
+
+(define-data-var scaling-enabled bool true)
+
+(define-public (configure-tier-scaling (tier uint) (base uint) (threshold uint) (factor uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set tier-scaling tier {
+            base-prize: base,
+            participant-threshold: threshold,
+            scaling-factor: factor,
+            last-updated: block-height
+        })
+        (ok true)
+    )
+)
+
+(define-public (adjust-tier-prizes (tier uint))
+    (let (
+        (config (unwrap! (map-get? tier-scaling tier) (err u1000)))
+        (pool (unwrap! (map-get? pools tier) (err u1001)))
+        (participants (len (default-to (list) (map-get? pool-participants tier))))
+    )
+        (if (and (var-get scaling-enabled) (> participants (get participant-threshold config)))
+            (map-set pools tier (merge pool {
+                winner-share: (+ (get winner-share pool) (get scaling-factor config))
+            }))
+            true)
+        (ok true)
+    )
+)
+
+
+(define-map token-pools
+    {pool-id: uint, token: principal}
+    {
+        weight: uint,
+        total-staked: uint,
+        enabled: bool
+    }
+)
+
+(define-map user-token-stakes
+    {pool-id: uint, token: principal, user: principal}
+    uint
+)
+
+(define-public (add-token-to-pool (pool-id uint) (token principal) (weight uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set token-pools 
+            {pool-id: pool-id, token: token}
+            {weight: weight, total-staked: u0, enabled: true})
+        (ok true)
+    )
+)
+
+(define-public (stake-token (pool-id uint) (token principal) (amount uint))
+    (let (
+        (pool (unwrap! (map-get? token-pools {pool-id: pool-id, token: token}) (err u2000)))
+    )
+        (asserts! (get enabled pool) (err u2001))
+        ;; (try! (contract-call? token transfer amount tx-sender (as-contract tx-sender)))
+        (map-set token-pools 
+            {pool-id: pool-id, token: token}
+            (merge pool {total-staked: (+ (get total-staked pool) amount)}))
+        (map-set user-token-stakes
+            {pool-id: pool-id, token: token, user: tx-sender}
+            (+ amount (default-to u0 (map-get? user-token-stakes 
+                {pool-id: pool-id, token: token, user: tx-sender}))))
+        (ok true)
+    )
+)
