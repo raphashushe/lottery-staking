@@ -5,6 +5,11 @@ authors = []
 telemetry = true
 cache_dir = '.\.cache'
 requirements = []
+[contracts.bridge]
+path = 'contracts/bridge.clar'
+clarity_version = 3
+epoch = 3.1
+
 [contracts.lottery]
 path = 'contracts/lottery.clar'
 clarity_version = 2
