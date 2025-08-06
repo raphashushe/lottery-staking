@@ -63,6 +63,11 @@ plan:
             path: "contracts\\bridge.clar"
             clarity-version: 3
         - emulated-contract-publish:
+            contract-name: liquidity-pool
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: "contracts\\liquidity-pool.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
             contract-name: prediction-market
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: "contracts\\prediction-market.clar"
