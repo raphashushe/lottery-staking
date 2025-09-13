@@ -9,6 +9,7 @@ This project implements a **tiered decentralized lottery platform** using Clarit
 - **Random Winner Selection**: Uses blockchain randomness to ensure fairness.
 - **Staking Rewards**: Non-winners receive a share of the total pool as rewards.
 - **Tiered Lottery Pools**: Offers small, medium, and large pools for more gamified participation.
+- **Lottery Insurance System**: Risk protection for lottery participants through insurance policies.
 
 ---
 
@@ -92,6 +93,84 @@ Allows the contract owner to cancel a pool in case of emergency.
 - **`get-pool-info`:** Retrieves information about a specific pool.
 - **`get-stake`:** Checks the stake of a user in a particular pool.
 - **`get-participants`:** Returns the list of participants in a pool.
+
+---
+
+## 🔐 Lottery Insurance System
+
+The **Lottery Insurance System** provides risk protection for lottery participants through customizable insurance policies. Users can purchase insurance to receive payouts if they don't win lottery draws, providing peace of mind and risk management.
+
+### **Key Features**
+
+- **🎯 Risk Protection**: Insure lottery entries against losses
+- **📊 Tiered Premiums**: Risk-based pricing with tier multipliers
+- **💰 Claim Payouts**: Receive 70% of insured amount on valid claims
+- **⏱️ Time Controls**: Built-in claim delays and policy expiration
+- **🛡️ Anti-Fraud**: Multiple validation checks prevent abuse
+
+### **How It Works**
+
+1. **Purchase Insurance**: Buy a policy before entering lottery
+2. **Register Entry**: Link your lottery participation to the policy
+3. **Wait Period**: Claim delay ensures lottery completion
+4. **File Claim**: Request payout if you don't win
+5. **Receive Payout**: Get 70% of your insured amount
+
+### **Insurance Functions**
+
+#### Purchase Insurance Policy
+```clarity
+(contract-call? .lottery-insurance purchase-insurance 
+    u1          ;; lottery tier (0=small, 1=medium, 2=large)
+    u500000     ;; insured amount (0.5 STX)
+    u100)       ;; lottery duration in blocks
+```
+
+#### Register Lottery Entry
+```clarity
+(contract-call? .lottery-insurance register-lottery-entry
+    u1)         ;; policy ID
+```
+
+#### File Insurance Claim
+```clarity
+(contract-call? .lottery-insurance file-claim
+    u1)         ;; policy ID
+```
+
+#### Check Policy Status
+```clarity
+(contract-call? .lottery-insurance get-policy
+    'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM  ;; user address
+    u1)         ;; policy ID
+```
+
+### **Premium Calculation**
+
+Premiums are calculated based on:
+- **Base Rate**: 5% of insured amount
+- **Tier Multiplier**: 
+  - Small tier: 1.0x (lower risk)
+  - Medium tier: 1.2x 
+  - Large tier: 1.5x (higher risk)
+
+**Example**: 
+- Insuring 1 STX on large tier: 1,000,000 × 5% × 1.5 = 75,000 microSTX premium
+
+### **Risk Management**
+
+- **Claim Delay**: 10 blocks minimum between lottery entry and claim
+- **Policy Expiration**: Policies expire after lottery duration + claim delay
+- **Pool Protection**: Claims limited to available insurance pool balance
+- **Validation Checks**: Multiple fraud prevention mechanisms
+
+### **Admin Functions**
+
+- **fund-insurance-pool**: Add funds to support payouts
+- **set-premium-rate**: Adjust base premium percentage (max 20%)
+- **set-payout-percentage**: Modify claim payout rate (50-90%)
+- **update-tier-multiplier**: Change risk multipliers per tier
+- **emergency-withdraw**: Remove excess funds if needed
 
 ---
 

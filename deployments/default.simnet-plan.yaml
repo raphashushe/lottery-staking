@@ -68,8 +68,18 @@ plan:
             path: "contracts\\liquidity-pool.clar"
             clarity-version: 3
         - emulated-contract-publish:
+            contract-name: lottery-insurance
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: "contracts\\lottery-insurance.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
             contract-name: prediction-market
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: "contracts\\prediction-market.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: story-categories
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: "contracts\\story-categories.clar"
             clarity-version: 3
       epoch: "3.1"
